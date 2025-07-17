@@ -1,0 +1,295 @@
+import os
+import statistics
+
+import openpyxl
+from openpyxl import load_workbook
+from openpyxl.styles import Font, Border, Side, PatternFill, Alignment
+
+
+def copy_cell_style(src_cell, dest_cell):
+    """复制单元格样式"""
+    # 字体
+    dest_cell.font = Font(
+        name=src_cell.font.name,
+        size=src_cell.font.size,
+        bold=src_cell.font.bold,
+        italic=src_cell.font.italic,
+        color=src_cell.font.color
+    )
+
+    # 边框
+    dest_cell.border = Border(
+        left=Side(style=src_cell.border.left.style),
+        right=Side(style=src_cell.border.right.style),
+        top=Side(style=src_cell.border.top.style),
+        bottom=Side(style=src_cell.border.bottom.style)
+    )
+
+    # 填充
+    dest_cell.fill = PatternFill(
+        fill_type=src_cell.fill.fill_type,
+        start_color=src_cell.fill.start_color,
+        end_color=src_cell.fill.end_color
+    )
+
+    # 对齐
+    dest_cell.alignment = Alignment(
+        horizontal=src_cell.alignment.horizontal,
+        vertical=src_cell.alignment.vertical,
+        wrap_text=src_cell.alignment.wrap_text
+    )
+
+
+def copy_excel(input_xlsx_path, sheet_name, output_xlsx_path, start_row=1, new_sheet_name=None):
+    try:
+        # 加载源工作簿
+        src_wb = load_workbook(input_xlsx_path)
+        src_sheet = src_wb[sheet_name]
+
+        # 准备目标工作簿
+        if os.path.exists(output_xlsx_path):
+            dest_wb = load_workbook(output_xlsx_path)
+        else:
+            dest_wb = openpyxl.Workbook()
+            dest_wb.remove(dest_wb.active)
+
+        # 生成唯一工作表名
+        if not new_sheet_name:
+            base_name = f"{sheet_name}_copy"
+            new_sheet_name = base_name
+            counter = 1
+            while new_sheet_name in dest_wb.sheetnames:
+                new_sheet_name = f"{base_name}_{counter}"
+                counter += 1
+
+        # 创建目标工作表
+        dest_sheet = dest_wb.create_sheet(title=new_sheet_name)
+
+        # 复制数据及样式
+        for row in src_sheet.iter_rows(min_row=start_row):
+            for src_cell in row:
+                dest_cell = dest_sheet.cell(
+                    row=src_cell.row,
+                    column=src_cell.column,
+                    value=src_cell.value
+                )
+                copy_cell_style(src_cell, dest_cell)
+
+        # 复制列宽
+        for col in src_sheet.columns:
+            col_letter = openpyxl.utils.get_column_letter(col[0].column)
+            dest_sheet.column_dimensions[col_letter].width = \
+                src_sheet.column_dimensions[col_letter].width
+
+        dest_wb.save(output_xlsx_path)
+        print(f"成功复制到 {new_sheet_name}（含完整样式）")
+        return new_sheet_name
+
+    except Exception as e:
+        print(f"错误: {str(e)}")
+        return None
+
+
+if __name__ == "__main__":
+    source = r"C:\Users\yunkai\Desktop\O-ZIRCON-DATA-SOURCE.xlsx"
+    target = r"C:\Users\yunkai\Desktop\O-ZIRCON-DATA.xlsx"
+    if not os.path.exists(target):
+        print(f"O-ZIRCON-DATA不存在: {target}")
+    else:
+        book = load_workbook(target)
+        print(f"O-ZIRCON-DATA已存在，表单命名分别为: {book.sheetnames}")
+
+    if not os.path.exists(source):
+        print(f"源文件不存在: {source}")
+
+    else:
+        new_sheet = copy_excel(
+            input_xlsx_path=source,
+            sheet_name="All ratios",
+            output_xlsx_path=target,
+            new_sheet_name="ProcessedData"
+        )
+        # 使用属性访问（推荐）
+        wb = load_workbook(target)
+        print(f"复制后表单的命名分别为：{wb.sheetnames}")
+
+        if new_sheet:
+            # 重命名工作表
+            wb = load_workbook(target)
+            sh = wb[new_sheet]
+            name_str = sh.cell(row=3, column=1).value
+            new_name = f"{name_str[-7:-3]}DATA"
+
+            # 处理重名
+            counter = 1
+            final_name = new_name
+            while final_name in wb.sheetnames:
+                final_name = f"{new_name}_{counter}"
+                counter += 1
+
+            sh.title = final_name
+            print(f"改名后表单的命名分别为：{wb.sheetnames}")
+            wb.save(target)
+            print(f"工作表已重命名为: {final_name}")
+
+            # 写入单元格数据，行列从1开始，不同于xlrd的0
+            sh['M1'] = 'd18O'
+            sh['M2'] = '((test_value(18o/16o)/0.0020052)-1)*1000'
+            sh['O1'] = 'PENGLAI'
+            sh['O2'] = 'average'
+            sh['P1'] = 'PENGLAI'
+            sh['P2'] = '1SD'
+            sh['Q1'] = 'PENGLAI_IMF'
+            sh['Q2'] = '5.31-PENGLAI_average'
+            sh['R1'] = 'd18O-CORRECT'
+            sh['R2'] = 'd18O+PENGLAI_IMF'
+            sh['S1'] = 'd18O-CORRECT'
+            sh['S2'] = '1SE'
+            sh['T1'] = 'QINGHU'
+            sh['T2'] = 'average'
+            sh['U1'] = 'QINGHU'
+            sh['U2'] = '1SD'
+            sh['V1'] = '91500'
+            sh['V2'] = 'average'
+            sh['W1'] = '91500'
+            sh['W2'] = '1SD'
+
+            # 计算d18O
+            for d18O_row in range(3, sh.max_row + 1):
+                cell_value = sh.cell(row=d18O_row, column=9).value
+                # 判断单元格非空且是数字类型
+                if cell_value is not None and isinstance(cell_value, (int, float)):
+                    try:
+                        d18O = (cell_value / 0.0020052 - 1) * 1000
+                        sh.cell(row=d18O_row, column=13).value = d18O
+                        print(f"行 {d18O_row} 计算结果:", d18O)
+                    except (TypeError, ZeroDivisionError) as e:
+                        print(f"行 {d18O_row} 计算错误:", e)
+                        sh.cell(row=d18O_row, column=13).value = "计算错误"
+                else:
+                    print(f"行 {d18O_row} 数据无效（空值或非数字）")
+                    sh.cell(row=d18O_row, column=13).value = "无效数据"
+
+            # 1. 提取样本名称（更健壮的写法）
+            sample_all = [
+                str(row[0]).strip()
+                for row in sh.iter_rows(values_only=True, min_row=3)
+                if row[0] is not None and str(row[0]).strip()
+            ]
+            print(f"共找到 {len(sample_all)} 个有效样本")
+
+            # 2. 计算PENGLAI d18O数据（带完整错误处理）
+            PENGLAId18O_data = []
+            for d18O_row, sampleName_all in enumerate(sample_all, start=3):
+                try:
+                    # 更严格的名称检查
+                    if isinstance(sampleName_all, str) and sampleName_all.upper().startswith("PENGLAI"):
+                        cell_value = sh.cell(row=d18O_row, column=13).value
+
+                        # 确保是数字类型
+                        if isinstance(cell_value, (int, float)):
+                            PENGLAId18O_data.append(float(cell_value))
+                            print(f"行 {d18O_row}: 样本 {sampleName_all} | 值: {cell_value:.4f}")
+                        else:
+                            print(f"行 {d18O_row}: 忽略非数字值 - {cell_value}")
+                except Exception as e:
+                    print(f"处理行 {d18O_row} 时出错: {str(e)}")
+
+            # 3. 计算结果并写入（带验证）
+            if PENGLAId18O_data:
+                try:
+                    avg = statistics.mean(PENGLAId18O_data)
+                    std = statistics.pstdev(PENGLAId18O_data)
+                    imf = 5.31 - avg
+
+                    print(f"\n统计结果:")
+                    print(f"平均值: {avg:.4f}‰")
+                    print(f"标准偏差: {std:.4f}")
+                    print(f"IMF值: {imf:.4f}")
+
+                    # 更安全的写入方式
+                    sh.cell(row=3, column=15).value = avg  # O3
+                    sh.cell(row=3, column=16).value = std  # P3
+                    sh.cell(row=3, column=17).value = imf  # Q3
+
+                except statistics.StatisticsError as e:
+                    print(f"计算错误: {str(e)}")
+            else:
+                print("警告: 未找到有效的PENGLAI数据")
+
+            # 计算d18O-CORRECT
+            for d18O_row in range(3, sh.max_row + 1):
+                try:
+                    # 获取所有需要的单元格值
+                    values = {
+                        'd18O': sh.cell(row=d18O_row, column=13).value,
+                        'O18': sh.cell(row=d18O_row, column=9).value,
+                        'col10': sh.cell(row=d18O_row, column=10).value
+                    }
+
+                    # 类型验证
+                    if not all(isinstance(v, (int, float)) for v in values.values()):
+                        raise ValueError("存在非数字数据")
+
+                    # 主计算
+                    d18O_correct = values['d18O'] + imf
+                    d18O_correct_1SE = values['O18'] * values['col10'] / 0.0020052 * 1000
+
+                    # 写入结果
+                    sh.cell(row=d18O_row, column=18).value = d18O_correct
+                    sh.cell(row=d18O_row, column=19).value = d18O_correct_1SE
+
+                except ValueError as e:
+                    print(f"行 {d18O_row} 数据验证失败: {str(e)}")
+                    sh.cell(row=d18O_row, column=18).value = "数据无效"
+                except ZeroDivisionError:
+                    print(f"行 {d18O_row} 除零错误")
+                    sh.cell(row=d18O_row, column=18).value = "除零错误"
+                except Exception as e:
+                    print(f"行 {d18O_row} 未知错误: {str(e)}")
+                    sh.cell(row=d18O_row, column=18).value = "计算错误"
+                else:
+                    print(f"行 {d18O_row} 计算成功")
+
+            # 计算 QINGHU d18O-CORRECT
+            QINGHUd18O_CORRECT_data = []
+            for d18O_row, sampleName_all in enumerate(sample_all, start=3):  # 从第3行开始循环
+                # 检查样本名称是否符合条件且值为有效数字
+                if isinstance(sampleName_all, str) and sampleName_all.upper().startswith("QINGHU"):
+                    cell_value = sh.cell(row=d18O_row, column=18).value
+                    # 确保值是数字类型且非空
+                    if isinstance(cell_value, (int, float)):
+                        QINGHUd18O_CORRECT_data.append(cell_value)
+                        print(f"匹配行：", sampleName_all, f"匹配值：", cell_value)
+            if QINGHUd18O_CORRECT_data:  # 检查列表是否非空
+                try:
+                    QINGHUd18O_CORRECT_data_average = statistics.mean(QINGHUd18O_CORRECT_data)
+                    QINGHUd18O_CORRECT_data_std_dev = statistics.pstdev(QINGHUd18O_CORRECT_data)
+                    print(f"QINGHUd18O_CORRECT_data平均值: {QINGHUd18O_CORRECT_data_average}")
+                    print(f"QINGHUd18O_CORRECT_data标准偏差: {QINGHUd18O_CORRECT_data_std_dev}")
+                    sh['T3'] = QINGHUd18O_CORRECT_data_average
+                    sh['U3'] = QINGHUd18O_CORRECT_data_std_dev
+                except statistics.StatisticsError as e:
+                    print(f"计算错误: {str(e)}")
+            else:
+                print("警告: 没有找到符合条件的QINGHUd18O数据，无法计算")
+
+            # 计算 91500 d18O-CORRECT
+            Z91500_CORRECT_data = []
+            for d18O_row, sampleName_all in enumerate(sample_all, start=3):  # 循环每一行
+                if type(sampleName_all) is str and sampleName_all.upper().startswith("91500"):  # 判断行名是否符合条件
+                    value_data = sh.cell(row=d18O_row, column=18).value
+                    if value_data:  # 判断是否非空
+                        Z91500_CORRECT_data.append(value_data)
+                        print(f"匹配行：", sampleName_all, f"匹配值：", value_data)
+            if Z91500_CORRECT_data:  # 检查列表是否非空
+                Z91500_CORRECT_data_average = statistics.mean(Z91500_CORRECT_data)
+                Z91500_CORRECT_data_std_dev = statistics.pstdev(Z91500_CORRECT_data)
+                print(f"PENGLAId18O平均值: {Z91500_CORRECT_data_average}")
+                print(f"PENGLAId18O标准偏差: {Z91500_CORRECT_data_std_dev}")
+                sh['V3'] = Z91500_CORRECT_data_average
+                sh['W3'] = Z91500_CORRECT_data_std_dev
+            else:
+                print("警告: 没有找到符合条件的数据Z91500_CORRECT_data，无法计算")
+
+            wb.save(target)
