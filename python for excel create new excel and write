@@ -1,0 +1,38 @@
+import openpyxl #导入方法库
+#创建一个空白工作簿,注意Workbook首字母大写
+book = openpyxl.Workbook()
+#创建时，会自动产生一个sheet，使用active获取
+sh = book.active
+#修改工作表名
+sh.title = "0714DATA"
+#增加sheet，并且命名，放置于特定位置
+sh1 = book.create_sheet("0716DATA最后")
+sh2 = book.create_sheet("0713DATA最前",0)
+sh4 = book.create_sheet("0715DATA第三",2)
+#根据名称获取某个特定的sheet
+sheet1 = book["0713DATA最前"]
+#写入单元格数据，行列从1开始，不同于xlrd的0
+sheet1['A1'] = 'SAMPLE'
+sheet1.cell(row=2, column=1).value = 'mao1'
+#获取特定单元格内容
+print(sheet1['A1'].value)
+print(sheet1.cell(row=2, column=1).value)
+#创建字典 数据名：电流强度
+dataContent = {
+'Sample' : 'Ipr (nA)',
+'4139-05-19@01' : '2.82049417495727',
+'4139-05-19@02' : '2.81533002853393',
+'4139-05-19@03' : '2.81478309631347',
+'4139-05-19@04' : '2.81509590148925',
+'4139-05-19@05' : '2.80390810966491',
+'4139-05-19@06' : '2.79999685287475',
+}
+#将该数据存储于0717DATA
+sheet2 = book["0714DATA"]
+sheet3 = book["0715DATA第三"]
+row = 1
+for sampleName,ipr in dataContent.items():
+    sheet2.cell(row=row, column=1).value = sampleName
+    sheet2.cell(row=row, column=3).value = ipr
+
+    row += 1
