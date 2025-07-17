@@ -1,0 +1,71 @@
+import xlrd #导入方法库
+import statistics
+
+book = xlrd.open_workbook("C-N-[N]-2025.05.19-23-Processed.xlsx") #打开excel文件
+print(f"表单的数量为：{book.nsheets}") #打印表单数量
+print(f"表单的命名分别为：{book.sheet_names()}") #打印表单名字
+
+book1 = book.sheet_by_index(0) #打开第一个表单，赋予其变量book1，或者使用sheet_by_name('2025-0519 Std Pre')
+
+print(f"表单名: {book1.name}") #打印表单book1命名
+print(f"表单索引：{book1.number}") #打印表单book1索引
+print(f"表单行数: {book1.nrows}") #打印表单book1行数
+print(f"表单列数： {book1.ncols}") #打印表单book1列数
+
+print(f"单元格A1的内容是：{book1.cell_value(rowx=0,colx=0)} ") #打印单元格内容
+print(f"单元格A1的内容是：{book1.cell_value(0,0)} ") #打印单元格内容
+
+#打印某行某列
+colNumber = 0
+
+while colNumber < 5 :
+    print(f" 第一行的内容是： {book1.cell_value(0,colNumber)} ")
+    colNumber += 1
+
+rowNumber = 0
+while rowNumber < 5 :
+    print(f" 第一列的内容是： {book1.cell_value(rowNumber,0)} ")
+    rowNumber += 1
+
+print(f"第一行的内容分别为： {book1.row_values(0)} ") #打印第一行的内容
+print(f"第一列的内容分别为： {book1.col_values(0)} ") #打印第一列的内容
+print(f"第一列中第六行开始的内容分别为： {book1.col_values(0 ,start_rowx = 5,end_rowx=7)} ") #打印第一列中某部分的内容
+
+# 计算某一列中数据平均值
+
+IMFC = book1.col_values(19,start_rowx = 2,end_rowx=8)
+print(f"IMFC分别为： {book1.col_values(19,start_rowx = 2,end_rowx=8)} ") #end_rowx不包含本身需注意
+
+IMFCaverage = statistics.mean(IMFC)
+print(f"IMFCaverage= ",IMFCaverage)
+
+# 计算特定行列中数据平均值
+sample = book1.col_values(0)
+IMFCfor4139_data = []
+for row,sampleName in enumerate(sample):
+    if type(sampleName ) is str and sampleName.startswith("4139"):#判断行名是否符合条件
+        value_data = book1.cell_value(row,19)
+        IMFCfor4139_data.append(value_data)#将所需计算数值增加到设置的空列表中去，注意statistics.mean函数无法应用于集合。
+        print(f"匹配行：",sampleName, f"匹配值：",value_data)
+print(f"IMFCfor4139_data: {IMFCfor4139_data}")
+print(f"IMFC4139= {statistics.mean(IMFCfor4139_data)}")
+
+
+# 计算所有列表特定行列中数据平均值
+sheets = book.sheets() #得到所有sheet对象
+for sheet in sheets: #循环每一个sheet
+    print(f"当前所处表格名为：{sheet.name}")
+    sample_all =sheet.col_values(0)
+    IMFCforMao_data = []
+    for row,sampleName_all in enumerate(sample_all):#循环每一行
+        if type(sampleName_all) is str and sampleName_all.startswith("M"):#判断行名是否符合条件
+            if sheet.cell_type(row,19) != xlrd.XL_CELL_EMPTY: #判断单元格非空
+              value_data = sheet.cell_value(row,19)
+              IMFCforMao_data.append(value_data)
+              print(f"匹配行：",sampleName_all,f"匹配值：",value_data)
+    print(f"IMFCforMao_data: {IMFCforMao_data}")
+    if IMFCforMao_data:  # 检查列表是否非空
+        average = statistics.mean(IMFCforMao_data)
+        print(f"IMFCMao平均值: {average}")
+    else:
+        print("警告: 没有找到符合条件的数据，无法计算平均值")
