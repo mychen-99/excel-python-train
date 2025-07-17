@@ -64,7 +64,7 @@ def copy_excel(xls_path, sheet_name, xlsx_path, start_row=1, new_sheet_name=None
     global global_new_sheet_name
     global_new_sheet_name = new_sheet_name
 
-source_file_path =  'D:\\software\\pythondata\\excel-data\\train\\1.xls'
+source_file_path =  r"D:\software\pythondata\excel-data\train\O-ZIRCON-DATA-SOURCE.xls"
 if not os.path.exists(source_file_path):
     print(f"文件不存在: {source_file_path}")
 target_file_path = r"D:\software\pythondata\excel-data\train\O-ZIRCON-DATA.xlsx"
@@ -75,7 +75,7 @@ copy_excel(
     xls_path=source_file_path,
     sheet_name="All ratios",
     xlsx_path=target_file_path,
-    start_row=6,
+    start_row=1,
     new_sheet_name="ProcessedData"
 )
 
@@ -98,15 +98,25 @@ sh.title = name_data
 print("新工作表名为", sh.title)
 
 #写入单元格数据，行列从1开始，不同于xlrd的0
-sh['M2'] = 'd18O'
-sh['O2'] = 'PENGLAI'
+sh['M1'] = 'd18O'
+sh['M2'] = '((test_value(18o/16o)/0.0020052)-1)*1000'
+sh['O1'] = 'PENGLAI'
+sh['O2'] = 'average'
+sh['P1'] = 'PENGLAI'
 sh['P2'] = '1SD'
-sh['Q2'] = 'IMF'
-sh['R2'] = 'd18O-CORRECT'
+sh['Q1'] = 'PENGLAI_IMF'
+sh['Q2'] = '5.31-PENGLAI_average'
+sh['R1'] = 'd18O-CORRECT'
+sh['R2'] = 'd18O+PENGLAI_IMF'
+sh['S1'] = 'd18O-CORRECT'
 sh['S2'] = '1SE'
-sh['T2'] = 'QINGHU'
+sh['T1'] = 'QINGHU'
+sh['T2'] = 'average'
+sh['U1'] = 'QINGHU'
 sh['U2'] = '1SD'
-sh['V2'] = '91500'
+sh['V1'] = '91500'
+sh['V2'] = 'average'
+sh['W1'] = '91500'
 sh['W2'] = '1SD'
 
 
